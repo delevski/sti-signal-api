@@ -10,6 +10,30 @@ Deploy the Stock Signal Intelligence API + Telegram bot to Vercel serverless.
 
 ## Deploy
 
+### Option A — One-click import (recommended)
+
+Open this link while logged into Vercel:
+
+**https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdelevski%2Fsti-signal-api&project-name=sti-signal-api&teamSlug=oris-projects-1434bdbc**
+
+1. Click **Continue with GitHub** → **Deploy**
+2. Add env vars from [`.env.example`](.env.example) in Vercel dashboard
+3. Redeploy once env vars are saved
+
+### Option B — CLI
+
+```bash
+cd sti-platform/vercel
+vercel login
+bash deploy.sh
+```
+
+### Option C — GitHub Actions
+
+Add secrets to the repo: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (from `.vercel/project.json` after first deploy).
+
+Repo: **https://github.com/delevski/sti-signal-api**
+
 ```bash
 cd sti-platform/vercel
 bash build.sh
