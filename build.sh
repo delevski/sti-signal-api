@@ -19,6 +19,13 @@ rsync -a \
   --exclude='__pycache__' \
   --exclude='*.pyc' \
   --exclude='api/' \
+  --exclude='backtest_runner.py' \
+  --exclude='run_integration_test.py' \
+  --exclude='setup_infrastructure.py' \
+  --exclude='ensemble_scorer.py' \
+  --exclude='report_generator.py' \
+  --exclude='sync_output.py' \
+  --exclude='sti/dashboard.py' \
   "$SRC/" "$DEST/"
 mkdir -p "$DEST/api"
 cp "$SRC/api/main.py" "$DEST/api/main.py"

@@ -1,14 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "name": "sti-signal-api",
   "buildCommand": "bash build.sh",
-  "installCommand": "pip install -r requirements.txt",
-  "functions": {
-    "app.py": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  },
   "env": {
     "VERCEL": "1"
   }

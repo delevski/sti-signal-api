@@ -13,6 +13,49 @@ except ImportError:
     ta = None
 
 
+def _rsi(close: pd.Series, length: int = 14) -> pd.Series:
+    delta = close.diff()
+    gain = delta.clip(lower=0).rolling(length).mean()
+    loss = (-delta.clip(upper=0)).rolling(length).mean()
+    rs = gain / loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
+
+def _macd(close: pd.Series) -> tuple[pd.Series, pd.Series]:
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+    return macd, macd - signal
+
+
+def _bbands(close: pd.Series, length: int = 20) -> tuple[pd.Series, pd.Series]:
+    mid = close.rolling(length).mean()
+    std = close.rolling(length).std()
+    return mid - 2 * std, mid + 2 * std
+
+
+def _atr(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 14) -> pd.Series:
+    prev_close = close.shift(1)
+    tr = pd.concat(
+        [high - low, (high - prev_close).abs(), (low - prev_close).abs()],
+        axis=1,
+    ).max(axis=1)
+    return tr.rolling(length).mean()
+
+
+def _adx(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 14) -> pd.Series:
+    up = high.diff()
+    down = -low.diff()
+    plus_dm = up.where((up > down) & (up > 0), 0.0)
+    minus_dm = down.where((down > up) & (down > 0), 0.0)
+    atr = _atr(high, low, close, length)
+    plus_di = 100 * (plus_dm.rolling(length).mean() / atr)
+    minus_di = 100 * (minus_dm.rolling(length).mean() / atr)
+    dx = (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan) * 100
+    return dx.rolling(length).mean()
+
+
 def _rows_to_df(rows: list[dict]) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     if df.empty:
@@ -47,7 +90,7 @@ def analyze(rows: list[dict]) -> dict[str, Any]:
 
     indicators: dict[str, Any] = {"last_close": round(last, 2)}
 
-    # RSI
+    # RSI / MACD / BB / ATR / ADX — pandas-ta if available, else pure pandas
     if ta:
         rsi_s = ta.rsi(close, length=14)
         macd_df = ta.macd(close)
@@ -55,7 +98,13 @@ def analyze(rows: list[dict]) -> dict[str, Any]:
         atr_s = ta.atr(high, low, close, length=14)
         adx_df = ta.adx(high, low, close, length=14)
     else:
-        rsi_s = macd_df = bb = atr_s = adx_df = None
+        rsi_s = _rsi(close)
+        macd_line, macd_hist = _macd(close)
+        macd_df = pd.DataFrame({"MACD": macd_line, "MACDh": macd_hist})
+        bb_lower, bb_upper = _bbands(close)
+        bb = pd.DataFrame({"BBL": bb_lower, "BBU": bb_upper})
+        atr_s = _atr(high, low, close)
+        adx_df = pd.DataFrame({"ADX": _adx(high, low, close)})
 
     rsi = float(rsi_s.iloc[-1]) if rsi_s is not None and not pd.isna(rsi_s.iloc[-1]) else 50.0
     indicators["rsi"] = round(rsi, 1)
