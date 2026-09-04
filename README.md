@@ -1,111 +1,74 @@
-# STI on Vercel
+# Stock Signal Intelligence API
 
-Deploy the Stock Signal Intelligence API + Telegram bot to Vercel serverless.
+A deployable market-analysis API that turns live price data into technical signals, opportunity scans, performance history, and Telegram bot responses. It packages the project's signal pipeline behind a FastAPI service designed for Vercel serverless deployments.
 
-## Prerequisites
+## What it does
 
-- [Vercel account](https://vercel.com)
-- API keys in Vercel project env (see below)
-- Telegram bot token from [@BotFather](https://t.me/BotFather)
+- Generates a signal and an expanded report for a ticker
+- Scans a configurable watchlist for opportunities
+- Exposes alerts, signal history, and agent performance
+- Uses Yahoo Finance market data with optional Finnhub, Alpha Vantage, and FRED inputs
+- Supports API-key protection through the `X-Api-Key` header
+- Includes Telegram webhook commands for checking signals from chat
+- Persists lightweight serverless cache data between pipeline runs
 
-## Deploy
+## Stack
 
-### Option A — One-click import (recommended)
+- Python
+- FastAPI
+- pandas, NumPy, and yfinance
+- Vercel serverless functions
+- Telegram Bot API
 
-Open this link while logged into Vercel:
-
-**https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdelevski%2Fsti-signal-api&project-name=sti-signal-api&teamSlug=oris-projects-1434bdbc**
-
-1. Click **Continue with GitHub** → **Deploy**
-2. Add env vars from [`.env.example`](.env.example) in Vercel dashboard
-3. Redeploy once env vars are saved
-
-### Option B — CLI
-
-```bash
-cd sti-platform/vercel
-vercel login
-bash deploy.sh
-```
-
-### Option C — GitHub Actions
-
-Add secrets to the repo: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (from `.vercel/project.json` after first deploy).
-
-Repo: **https://github.com/delevski/sti-signal-api**
+## Run locally
 
 ```bash
-cd sti-platform/vercel
-bash build.sh
-npx vercel --prod
-```
-
-Or link the repo in Vercel dashboard with **Root Directory** = `sti-platform/vercel`.
-
-## Environment variables (Vercel dashboard)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `STI_API_KEY` | Recommended | Protects API endpoints (`X-Api-Key` header) |
-| `STI_FINNHUB_KEY` | Optional | News via Finnhub |
-| `STI_ALPHA_VANTAGE_KEY` | Optional | Extra data |
-| `STI_FRED_KEY` | Optional | Macro series |
-| `TELEGRAM_BOT_TOKEN` | For bot | From BotFather |
-| `TELEGRAM_WEBHOOK_SECRET` | Recommended | Random string; set on webhook |
-
-`VERCEL=1` is set automatically in `vercel.json`.
-
-## After deploy
-
-1. **Health check**
-   ```bash
-   curl https://YOUR-APP.vercel.app/health
-   ```
-
-2. **Signal (external API)**
-   ```bash
-   curl -H "X-Api-Key: YOUR_KEY" https://YOUR-APP.vercel.app/signal/JPM
-   ```
-
-3. **Register Telegram webhook** (once)
-   ```bash
-   curl -X POST "https://YOUR-APP.vercel.app/telegram/set-webhook?url=https://YOUR-APP.vercel.app/telegram/webhook" \
-     -H "X-Api-Key: YOUR_KEY"
-   ```
-
-4. **Use the bot** — message your bot: `/signal NVDA`
-
-## API endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Liveness |
-| GET | `/signal/{ticker}` | Full JSON signal |
-| GET | `/signal/{ticker}/report` | HTML report |
-| POST | `/scan` | Run watchlist scan |
-| GET | `/opportunities` | Ranked opportunities |
-| GET | `/performance/agents` | Agent stats |
-| GET | `/alerts` | Recent alerts |
-| GET | `/history/{ticker}` | Signal history |
-| POST | `/telegram/webhook` | Telegram updates |
-| POST | `/telegram/set-webhook` | Register webhook |
-
-Interactive docs: `https://YOUR-APP.vercel.app/docs`
-
-## Limitations on Vercel
-
-- **60s max** per request (Pro plan). Single-ticker `/signal` fits; full `/scan` may timeout on large watchlists.
-- **Ephemeral storage** — SQLite and cache live in `/tmp` and reset between cold starts. Use Render/Docker for persistent learning history.
-- **No vectorbt backtests** in this deploy bundle (slim `requirements.txt`).
-
-For heavy workloads, use `sti-platform/Dockerfile` on Render/Railway and point your Telegram bot or clients at that URL instead.
-
-## Local test (Vercel-style)
-
-```bash
-cd sti-platform/vercel
-bash build.sh
-export VERCEL=1 STI_API_KEY=test TELEGRAM_BOT_TOKEN=...
+git clone https://github.com/delevski/sti-signal-api.git
+cd sti-signal-api
+python -m venv .venv
+source .venv/bin/activate # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
+cp .env.example .env
+uvicorn app:app --reload
 ```
+
+Open `http://localhost:8000/docs` for the interactive API documentation.
+
+## Main endpoints
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Service health check |
+| `GET` | `/signal/{ticker}` | Current signal for one ticker |
+| `GET` | `/signal/{ticker}/report` | Expanded signal report |
+| `GET` | `/scan` | Scan a comma-separated ticker list |
+| `GET` | `/opportunities` | Ranked watchlist opportunities |
+| `GET` | `/agent-performance` | Signal-agent performance data |
+| `GET` | `/alerts` | Recent alerts |
+| `GET` | `/history/{ticker}` | Historical signals for a ticker |
+| `POST` | `/telegram/webhook` | Telegram bot webhook |
+
+Protected endpoints expect `X-Api-Key` when `STI_API_KEY` is configured.
+
+## Configuration
+
+Copy `.env.example` to `.env` and add only the services you need. Core market data works through Yahoo Finance; other providers and Telegram are optional. Never commit real keys.
+
+## Deploy to Vercel
+
+The repository includes `vercel.json`, `build.sh`, and `deploy.sh`.
+
+```bash
+bash build.sh
+vercel --prod
+```
+
+After adding environment variables in Vercel, verify the deployment:
+
+```bash
+curl https://YOUR-APP.vercel.app/health
+```
+
+## Notes
+
+Vercel functions have an ephemeral filesystem and execution limits. The included cache layer is suitable for lightweight signal data, not durable application storage. Financial signals are informational and are not investment advice.
